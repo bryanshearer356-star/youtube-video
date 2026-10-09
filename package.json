@@ -1,0 +1,27 @@
+{
+  "name": "youtube-video",
+  "private": true,
+  "type": "module",
+  "description": "YouTube video editing pipeline: Tella -> FFmpeg -> HyperFrames -> FFmpeg, with Epidemic Sound music",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "new": "node scripts/new-episode.mjs",
+    "tella:list": "node scripts/tella.mjs list",
+    "tella:fetch": "node scripts/tella.mjs fetch",
+    "prep": "node scripts/prep.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/preview.mjs",
+    "render": "node scripts/render.mjs",
+    "finish": "node scripts/finish.mjs",
+    "make": "node scripts/make.mjs"
+  },
+  "devDependencies": {
+    "hyperframes": "0.8.143"
+  },
+  "dependencies": {
+    "gsap": "3.14.2"
+  }
+}

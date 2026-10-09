@@ -1,0 +1,47 @@
+{
+  "title": "How I Edit My YouTube Videos",
+  "subtitle": "Tella + HyperFrames + FFmpeg workflow",
+  "channel": "Your Channel Name",
+  "resolution": "landscape",
+  "fps": 30,
+
+  "tellaVideoId": "",
+
+  "footage": {
+    "trimStart": 0,
+    "trimEnd": null
+  },
+
+  "intro": { "duration": 4 },
+  "outro": {
+    "duration": 6,
+    "headline": "Thanks for watching",
+    "cta": "Subscribe for more videos like this"
+  },
+
+  "music": {
+    "introVolume": 0.8,
+    "bedVolume": 0.08,
+    "outroVolume": 0.8,
+    "trackOffset": 0
+  },
+
+  "lowerThirds": [
+    { "at": 2, "duration": 5, "name": "Your Name", "role": "Creator, Your Channel Name" }
+  ],
+
+  "chapters": [
+    { "at": 0, "title": "Intro" },
+    { "at": 30, "title": "Recording in Tella" },
+    { "at": 90, "title": "Editing with HyperFrames" }
+  ],
+
+  "thumbnailAt": 2.5,
+
+  "brand": {
+    "background": "#0b0b10",
+    "text": "#f5f5f7",
+    "accent": "#ff3b5c",
+    "font": "Inter"
+  }
+}

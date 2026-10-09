@@ -1,0 +1,10 @@
+node_modules/
+.env
+episodes/*/
+!episodes/example/
+episodes/example/raw/*
+episodes/example/music/*
+episodes/example/build/
+episodes/example/out/
+!episodes/**/.gitkeep
+.DS_Store
