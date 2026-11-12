@@ -44,11 +44,48 @@ export function createDb(raw) {
       return m;
     }),
     bge: null,
+    people: new Map(),     // character key -> display name
+    comboPeople: new Map(), // combo id -> Set of character keys that can make it
+    traits: [],
     base: new Map(),
     live: new Map(),
     comboCache: new Map(),
   };
+  const traits = new Set();
+  for (const c of raw.cards) {
+    for (const t of c.tr) traits.add(t);
+    if (c.k !== 'c' || !c.ch) continue;
+    const name = db.people.get(c.ch);
+    if (!name || c.n.length < name.length) db.people.set(c.ch, c.n);
+    const set = raw.recipeSets[raw.charSet[c.i]];
+    if (!set) continue;
+    for (const out in set) {
+      const id = Number(out);
+      if (!db.comboPeople.has(id)) db.comboPeople.set(id, new Set());
+      db.comboPeople.get(id).add(c.ch);
+    }
+  }
+  db.traits = [...traits].sort();
   return db;
+}
+
+/**
+ * Whether a card belongs in a themed deck.
+ * trait: items and power cards must carry it; characters pass unless they
+ *   carry other traits only (most characters have none, and their combos take
+ *   the item's trait).
+ * person: characters must be that character and power cards must be one of
+ *   their combos; items always pass, since items belong to no character.
+ */
+export function inTheme(db, c, trait, person) {
+  if (trait) {
+    if (c.k === 'c' ? c.tr.length && !c.tr.includes(trait) : !c.tr.includes(trait)) return false;
+  }
+  if (person) {
+    if (c.k === 'c' && c.ch !== person) return false;
+    if (c.k === 'p') { const who = db.comboPeople.get(c.cc); if (!who || !who.has(person)) return false; }
+  }
+  return true;
 }
 
 /** Switch the active battleground effect (null for none). Clears derived caches. */

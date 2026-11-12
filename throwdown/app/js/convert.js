@@ -51,7 +51,10 @@ for (const u of Object.values(raw)) {
     };
   } else if (!u.hidden && (DECK_SETS.has(u.set) || PC_SETS.has(u.set))) {
     const k = PC_SETS.has(u.set) ? 'p' : u.card_type === 'character' ? 'c' : 'o';
-    cards.push({ ...base, k, r: num(u.rarity), ...levels(u) });
+    const card = { ...base, k, r: num(u.rarity), ...levels(u) };
+    if (k === 'c' && u.character) card.ch = u.character;       // which character this is, e.g. all versions of Peter
+    if (k === 'p' && u.combo_card_id) card.cc = num(u.combo_card_id); // the combo this power card is a ready-made copy of
+    cards.push(card);
   }
 }
 

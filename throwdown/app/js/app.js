@@ -17,7 +17,7 @@ let db, raw, worker = null, jobId = 0;
 const pending = new Map();
 const store = {
   collection: {}, bges: [EXAMPLE_BGE], saved: [],
-  prefs: { source: 'all', mode: 'offense', bge: -1, heroId: 0, size: 25, copies: 1, effort: 2 },
+  prefs: { source: 'all', mode: 'offense', bge: -1, heroId: 0, size: 25, copies: 1, effort: 2, trait: '', person: '' },
 };
 const ui = { kind: '', shown: 40, combo: 0, draft: [], result: null, resultLabel: '', busy: false, sel: {}, custom: false };
 
@@ -140,6 +140,12 @@ function syncBuildForm() {
   fill($('f-bge'), option(-1, 'No effect', p.bge === -1), store.bges.map((b, i) => option(i, b.name, p.bge === i)));
   const heroes = [...db.heroes.values()].sort((a, b) => a.n.localeCompare(b.n));
   fill($('f-hero'), option(0, 'Best fit (auto)', !p.heroId), heroes.map((x) => option(x.i, `${x.n} (${SHOWS[x.t] || ''})`, p.heroId === x.i)));
+  if (!db.traits.includes(p.trait)) p.trait = '';
+  if (!db.people.has(p.person)) p.person = '';
+  fill($('f-trait'), option('', 'Any trait', !p.trait), db.traits.map((t) => option(t, cap(t), p.trait === t)));
+  const people = [...db.people].sort((a, b) => a[1].localeCompare(b[1]));
+  fill($('f-person'), option('', people.length ? 'Any character' : 'Needs a newer export', !p.person), people.map(([k, n]) => option(k, n, p.person === k)));
+  $('f-person').disabled = !people.length;
   $('f-size').value = p.size; $('f-copies').value = p.copies; $('f-effort').value = p.effort;
 }
 
@@ -149,13 +155,15 @@ function readBuildForm() {
   p.mode = $('mode-def').checked ? 'defense' : 'offense';
   p.bge = Number($('f-bge').value);
   p.heroId = Number($('f-hero').value);
+  p.trait = $('f-trait').value; p.person = $('f-person').value;
   p.size = Number($('f-size').value); p.copies = Number($('f-copies').value); p.effort = Number($('f-effort').value);
   save();
 }
 
 function describeJob(p) {
   const bge = p.bge >= 0 && store.bges[p.bge] ? store.bges[p.bge].name : 'No battleground effect';
-  return `${cap(p.mode)} · ${p.source === 'mine' ? 'My collection' : 'Every card'} · ${bge}`;
+  const theme = [p.trait ? `${cap(p.trait)} only` : '', p.person ? `${db.people.get(p.person)} only` : ''].filter(Boolean);
+  return [cap(p.mode), p.source === 'mine' ? 'My collection' : 'Every card', ...theme, bge].join(' · ');
 }
 
 function startWorker() {
@@ -200,8 +208,8 @@ async function onBuild(e) {
   const p = store.prefs;
   const err = $('build-err');
   err.hidden = true;
-  if (p.source === 'mine' && ownedCount() < p.size) {
-    err.textContent = `Your collection has ${ownedCount()} cards and a deck needs ${p.size}. Add cards on the Collection tab, or build from every card.`;
+  if (p.source === 'mine' && !ownedCount()) {
+    err.textContent = 'Your collection is empty. Add cards on the Collection tab, or build from every card.';
     err.hidden = false;
     return;
   }
@@ -212,7 +220,7 @@ async function onBuild(e) {
   progress(0, 'Starting');
   const job = {
     source: p.source, collection: p.source === 'mine' ? store.collection : null, copies: p.copies,
-    mode: p.mode, size: p.size, effort: p.effort, heroId: p.heroId,
+    mode: p.mode, size: p.size, effort: p.effort, heroId: p.heroId, trait: p.trait, person: p.person,
     bge: p.bge >= 0 ? store.bges[p.bge] : null,
   };
   try {

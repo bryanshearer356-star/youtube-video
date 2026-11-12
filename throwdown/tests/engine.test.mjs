@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createDb, makeUnit, makeCombo, setBge, comboId } from '../app/js/data.js';
+import { createDb, makeUnit, makeCombo, setBge, comboId, inTheme } from '../app/js/data.js';
 import { battle } from '../app/js/engine.js';
 import { buildPool, recommend, duel } from '../app/js/builder.js';
 
@@ -76,4 +76,19 @@ test('copies of one card at different levels are separate pool entries', () => {
   assert.deepEqual(pool.map((e) => [e.t.level, e.n]).sort(), [[1, 2], [c.a.length, 1]].sort());
   const old = buildPool(db, { source: 'mine', collection: { [c.i]: { n: 3, l: 5 } } });
   assert.deepEqual(old.map((e) => [e.t.level, e.n]), [[5, 3]]);
+});
+
+test('trait and character limits are strict', async () => {
+  assert.ok(db.traits.includes('hyper') && db.people.has('fg_peter'));
+  const pool = buildPool(db, { source: 'all', copies: 2, trait: 'hyper', person: 'fg_peter' });
+  const res = await recommend(db, { pool, heroes: [hero()], mode: 'offense', size: 25, effort: 1 });
+  assert.equal(res.cards.reduce((s, c) => s + c.n, 0), 25);
+  for (const { t } of res.cards) {
+    const c = db.cards.get(t.id);
+    if (c.k === 'c') assert.equal(c.ch, 'fg_peter');
+    else assert.ok(c.tr.includes('hyper'), c.n);
+    if (c.k === 'p') assert.ok(db.comboPeople.get(c.cc).has('fg_peter'), c.n);
+  }
+  for (const { x } of res.combos) assert.ok(x.traits.includes('hyper'), x.name);
+  await assert.rejects(recommend(db, { pool: buildPool(db, { source: 'all', copies: 1, trait: 'food', person: 'fg_peter' }).slice(0, 5), heroes: [hero()], mode: 'offense', size: 25, effort: 1 }), /fit those choices/);
 });

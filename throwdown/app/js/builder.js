@@ -1,6 +1,6 @@
 // Deck recommendation: a fast rating narrows the field, then simulated battles
 // decide between the finalists.
-import { makeUnit, makeCombo, ownedLevels } from './data.js';
+import { makeUnit, makeCombo, ownedLevels, inTheme } from './data.js';
 import { battle, rng } from './engine.js';
 
 /**
@@ -8,16 +8,17 @@ import { battle, rng } from './engine.js';
  * source 'all': every card at max level, `copies` of each.
  * source 'mine': collection = { cardId: { lv: { level: copies } } }.
  */
-export function buildPool(db, { source, collection, copies = 1 }) {
+export function buildPool(db, { source, collection, copies = 1, trait = '', person = '' }) {
   const pool = [];
+  const ok = (c) => inTheme(db, c, trait, person);
   if (source === 'mine') {
     for (const [id, own] of Object.entries(collection || {})) {
       const c = db.cards.get(Number(id));
-      if (!c) continue;
+      if (!c || !ok(c)) continue;
       for (const [l, n] of Object.entries(ownedLevels(c, own))) if (n > 0) pool.push({ t: makeUnit(db, c.i, Number(l)), n });
     }
   } else {
-    for (const c of db.cards.values()) pool.push({ t: makeUnit(db, c.i, 0), n: copies });
+    for (const c of db.cards.values()) if (ok(c)) pool.push({ t: makeUnit(db, c.i, 0), n: copies });
   }
   return pool;
 }
@@ -129,7 +130,7 @@ export async function recommend(db, opts, onProgress = async () => {}) {
   const { pool, heroes, mode, size = 25, effort = 2, seed = 1 } = opts;
   const key = mode === 'defense' ? 'dvalue' : 'value';
   const available = pool.reduce((s, e) => s + e.n, 0);
-  if (available < size) throw new Error(`Only ${available} cards available; a deck needs ${size}.`);
+  if (available < size) throw new Error(`Only ${available} cards fit those choices, and a deck needs ${size}. Loosen the trait or character limit, allow more copies, or pick a smaller deck.`);
   if (!heroes.length) throw new Error('No hero selected.');
   const rand = rng(seed);
 

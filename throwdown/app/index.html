@@ -158,6 +158,13 @@ nav a[aria-current=page] { color: var(--ink); border-top-color: var(--accent); }
         <label class="field"><span>Effect</span><select id="f-bge"></select></label>
         <label class="field"><span>Hero</span><select id="f-hero"></select></label>
       </div>
+      <fieldset>
+        <legend>Limit the deck to</legend>
+        <div class="row">
+          <select id="f-trait" aria-label="Limit to a trait"></select>
+          <select id="f-person" aria-label="Limit to a character"></select>
+        </div>
+      </fieldset>
       <details id="more-options">
         <summary>More options</summary>
         <div class="row">
@@ -166,6 +173,7 @@ nav a[aria-current=page] { color: var(--ink); border-top-color: var(--accent); }
           <label class="field"><span>Testing</span><select id="f-effort"><option value="1">Quick</option><option value="2">Standard</option><option value="4">Thorough</option></select></label>
         </div>
         <p class="note">Copies applies to "Every card" only. Your collection uses the copies you own.</p>
+        <p class="note">A trait limit keeps only items and power cards with that trait; characters stay, because most have no trait and their combos take the item's trait. A character limit keeps only that character's cards and power cards; items stay, because items belong to no one.</p>
       </details>
       <button class="btn primary" id="build-go" type="submit">Build deck</button>
       <div id="progress" hidden>
