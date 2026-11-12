@@ -1,0 +1,283 @@
+<title>Throwdown Deck Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lilita+One&display=swap">
+<style>
+/* Layout: one-column phone app. Sticky title bar, five tabs fixed at the bottom,
+   flat cel-animation look: ink outlines and a hard offset shadow on the few
+   things that matter (primary button, win-rate badge). */
+:root {
+  --paper: #f1f4fa; --surface: #ffffff; --sunk: #e6eaf3;
+  --ink: #151b2e; --muted: #58627d; --line: #cfd6e4;
+  --accent: #ffc21a; --accent-ink: #151b2e; --outline: #151b2e;
+  --good: #14845a; --bad: #c92a2d;
+  --r1: #7b859c; --r2: #2f74c9; --r3: #8a4fd6; --r4: #b97f00; --r5: #cf2e31;
+  --display: 'Lilita One', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif;
+  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --gut-l: max(16px, env(safe-area-inset-left, 0px));
+  --gut-r: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1220; --surface: #181e33; --sunk: #222a45;
+    --ink: #eef1fa; --muted: #9ba6c2; --line: #313b5c;
+    --accent: #ffc21a; --accent-ink: #151b2e; --outline: #05070d;
+    --good: #4ccf9c; --bad: #ff7a7c;
+    --r1: #9aa4bd; --r2: #6aa8f5; --r3: #b990f5; --r4: #f2b632; --r5: #ff7375;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e1220; --surface: #181e33; --sunk: #222a45;
+  --ink: #eef1fa; --muted: #9ba6c2; --line: #313b5c;
+  --accent: #ffc21a; --accent-ink: #151b2e; --outline: #05070d;
+  --good: #4ccf9c; --bad: #ff7a7c;
+  --r1: #9aa4bd; --r2: #6aa8f5; --r3: #b990f5; --r4: #f2b632; --r5: #ff7375;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.45 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--accent); }
+h1, h2, h3, p, ul, fieldset { margin: 0; padding: 0; }
+ul { list-style: none; }
+fieldset { border: 0; min-width: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--r2); outline-offset: 2px; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--accent); color: var(--accent-ink);
+  border-bottom: 2px solid var(--outline); padding-block: 10px; padding-left: var(--gut-l); padding-right: var(--gut-r);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.top h1 { font: 400 22px/1.1 var(--display); letter-spacing: .01em; }
+.top span { font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+main { max-width: 640px; margin: 0 auto; padding-block: 16px 96px; padding-left: var(--gut-l); padding-right: var(--gut-r);
+  display: flex; flex-direction: column; gap: 16px; }
+.tab { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+h2 { font: 400 19px/1.2 var(--display); letter-spacing: .01em; text-wrap: balance; }
+h3 { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.note { color: var(--muted); font-size: 13px; max-width: 65ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > span, legend { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+legend { margin-bottom: 6px; }
+select, input[type=search], input[type=text], input[type=number], textarea {
+  width: 100%; min-height: 44px; padding: 8px 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+textarea { min-height: 96px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.row > * { flex: 1 1 130px; min-width: 0; }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--sunk); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg label { position: relative; text-align: center; }
+.seg input { position: absolute; opacity: 0; inset: 0; }
+.seg span { display: block; padding: 10px 6px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
+.seg input:checked + span { background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 0 2px var(--outline); }
+.seg input:focus-visible + span { outline: 3px solid var(--r2); outline-offset: 2px; }
+
+.btn { min-height: 44px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; cursor: pointer; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border: 2px solid var(--outline); box-shadow: 3px 3px 0 var(--outline);
+  font: 400 19px/1 var(--display); letter-spacing: .02em; min-height: 52px; }
+.btn.primary:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--outline); }
+.btn.danger { color: var(--bad); }
+.btn.small { min-height: 36px; padding: 4px 10px; font-size: 13px; }
+details > summary { cursor: pointer; font-weight: 600; padding-block: 6px; }
+details[open] > summary { margin-bottom: 10px; }
+
+.bar { height: 10px; background: var(--sunk); border-radius: 5px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); border-right: 2px solid var(--outline); transition: width .15s linear; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+
+.score { display: flex; align-items: center; gap: 14px; }
+.score b { flex: none; font: 400 34px/1 var(--display); background: var(--accent); color: var(--accent-ink); border: 2px solid var(--outline);
+  box-shadow: 3px 3px 0 var(--outline); border-radius: 12px; padding: 10px 12px; font-variant-numeric: tabular-nums; }
+.score span { font-size: 13px; color: var(--muted); min-width: 0; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+.cards { display: flex; flex-direction: column; }
+.card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 9px 0; border-top: 1px solid var(--line); align-items: center; }
+.cards > .card:first-child { border-top: 0; }
+.card .name { font-weight: 600; overflow-wrap: anywhere; }
+.card .name i { font-style: normal; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 4px; }
+.card .stat { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; font-size: 13px; }
+.card .meta { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.pip { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--r1); }
+.pip.r2 { background: var(--r2); } .pip.r3 { background: var(--r3); } .pip.r4 { background: var(--r4); } .pip.r5 { background: var(--r5); }
+.pip.r0 { background: transparent; box-shadow: inset 0 0 0 2px var(--muted); }
+.own { display: flex; align-items: center; gap: 6px; grid-column: 1 / -1; flex-wrap: wrap; padding-top: 4px; }
+.own .btn { min-width: 44px; padding: 0; font-size: 20px; line-height: 1; }
+.own output { min-width: 28px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.own select { flex: 1 1 150px; width: auto; }
+
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { min-height: 36px; padding: 4px 12px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; font-size: 13px; cursor: pointer; }
+.chip[aria-pressed=true] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 500; }
+.check input { width: 20px; height: 20px; }
+.pill { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; background: var(--good); color: var(--surface); }
+.combo { padding: 10px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.cards > .combo:first-child { border-top: 0; }
+.combo .from { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.err { color: var(--bad); font-weight: 600; }
+.split { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prose { display: flex; flex-direction: column; gap: 10px; max-width: 65ch; }
+.prose ul { list-style: disc; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+
+nav { position: fixed; inset: auto 0 0; z-index: 6; background: var(--surface); border-top: 2px solid var(--outline);
+  padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: var(--gut-l); padding-right: var(--gut-r); }
+nav div { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+nav a { display: block; text-align: center; padding: 14px 2px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted); text-decoration: none; border-top: 4px solid transparent; margin-top: -2px; }
+nav a[aria-current=page] { color: var(--ink); border-top-color: var(--accent); }
+</style>
+
+<header class="top">
+  <h1>Throwdown Deck Lab</h1>
+  <span id="data-date"></span>
+</header>
+
+<main>
+  <p id="boot" class="note">Loading card data…</p>
+
+  <section id="tab-build" class="tab" hidden>
+    <form id="build-form" class="panel">
+      <fieldset>
+        <legend>Build from</legend>
+        <div class="seg">
+          <label><input type="radio" name="source" id="src-all" value="all"><span>Every card</span></label>
+          <label><input type="radio" name="source" id="src-mine" value="mine"><span id="src-mine-label">My collection</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Goal</legend>
+        <div class="seg">
+          <label><input type="radio" name="mode" id="mode-off" value="offense"><span>Offense</span></label>
+          <label><input type="radio" name="mode" id="mode-def" value="defense"><span>Defense</span></label>
+        </div>
+      </fieldset>
+      <div class="row">
+        <label class="field"><span>Effect</span><select id="f-bge"></select></label>
+        <label class="field"><span>Hero</span><select id="f-hero"></select></label>
+      </div>
+      <details id="more-options">
+        <summary>More options</summary>
+        <div class="row">
+          <label class="field"><span>Deck size</span><select id="f-size"><option>25</option><option>30</option><option>35</option></select></label>
+          <label class="field"><span>Copies of each card</span><select id="f-copies"><option>1</option><option>2</option><option>3</option></select></label>
+          <label class="field"><span>Testing</span><select id="f-effort"><option value="1">Quick</option><option value="2">Standard</option><option value="4">Thorough</option></select></label>
+        </div>
+        <p class="note">Copies applies to "Every card" only. Your collection uses the copies you own.</p>
+      </details>
+      <button class="btn primary" id="build-go" type="submit">Build deck</button>
+      <div id="progress" hidden>
+        <div class="bar"><i id="progress-bar"></i></div>
+        <p class="note" id="progress-msg"></p>
+      </div>
+      <p class="err" id="build-err" hidden></p>
+    </form>
+    <div id="result" class="tab"></div>
+    <div id="saved-wrap" class="tab" hidden>
+      <h2>Saved decks</h2>
+      <div id="saved" class="tab"></div>
+    </div>
+  </section>
+
+  <section id="tab-collection" class="tab" hidden>
+    <div class="split"><h2>My collection</h2><span class="note" id="c-summary"></span></div>
+    <p class="note">Tap + for each card you own and set its level. Stars are fusions. Everything is saved on this device.</p>
+    <input type="search" id="c-search" placeholder="Search cards" aria-label="Search cards" autocomplete="off">
+    <div class="chips" id="c-kind" role="group" aria-label="Card type">
+      <button type="button" class="chip" data-k="" aria-pressed="true">All</button>
+      <button type="button" class="chip" data-k="c" aria-pressed="false">Characters</button>
+      <button type="button" class="chip" data-k="o" aria-pressed="false">Items</button>
+      <button type="button" class="chip" data-k="p" aria-pressed="false">Power cards</button>
+    </div>
+    <div class="row">
+      <select id="c-rarity" aria-label="Rarity"></select>
+      <select id="c-show" aria-label="Show"></select>
+    </div>
+    <label class="check"><input type="checkbox" id="c-owned"> Show only cards I own</label>
+    <div class="panel"><div class="cards" id="c-list"></div></div>
+    <button type="button" class="btn" id="c-more" hidden>Show more</button>
+    <details class="panel">
+      <summary>Back up or move my collection</summary>
+      <div class="field">
+        <p class="note">Copy this text somewhere safe. To restore it, or move to another device, paste it here and press Load.</p>
+        <textarea id="c-io" aria-label="Collection backup text" spellcheck="false"></textarea>
+        <div class="row">
+          <button type="button" class="btn" id="c-copy">Copy</button>
+          <button type="button" class="btn" id="c-load">Load</button>
+          <button type="button" class="btn danger" id="c-clear">Clear collection</button>
+        </div>
+        <p class="note" id="c-io-msg" role="status"></p>
+      </div>
+    </details>
+  </section>
+
+  <section id="tab-combos" class="tab" hidden>
+    <h2>Combo finder</h2>
+    <p class="note">Pick a character or an item to see everything it combines into, strongest first.</p>
+    <input type="search" id="x-search" placeholder="Find a character or item" aria-label="Find a character or item" autocomplete="off">
+    <div class="chips" id="x-matches"></div>
+    <label class="check"><input type="checkbox" id="x-owned"> Only partners I own</label>
+    <div id="x-out" class="tab"></div>
+  </section>
+
+  <section id="tab-bge" class="tab" hidden>
+    <h2>Battleground effects</h2>
+    <p class="note">The game announces each battleground effect in your mailbox. Enter it here once, then choose it on the Build tab and the deck is tested with those boosts switched on for both sides.</p>
+    <div id="b-list" class="tab"></div>
+    <form id="b-form" class="panel">
+      <h3>Add a battleground effect</h3>
+      <label class="field"><span>Name</span><input type="text" id="b-name" placeholder="e.g. Full Throttle" autocomplete="off" maxlength="40"></label>
+      <div class="cards" id="b-effects"></div>
+      <div class="row">
+        <label class="field"><span>Applies to</span><select id="b-target"></select></label>
+        <label class="field"><span>Boost</span><select id="b-kind">
+          <option value="skill">Stronger skill (cards that have it)</option>
+          <option value="grant">Gains a skill</option>
+          <option value="hp">More health (%)</option>
+          <option value="atk">More attack (%)</option>
+        </select></label>
+      </div>
+      <div class="row">
+        <label class="field" id="b-skill-wrap"><span>Skill</span><select id="b-skill"></select></label>
+        <label class="field"><span>Amount</span><input type="number" id="b-n" min="1" max="500" value="5" inputmode="numeric"></label>
+      </div>
+      <div class="row">
+        <button type="button" class="btn" id="b-add">Add this boost</button>
+        <button type="submit" class="btn" id="b-save">Save effect</button>
+      </div>
+      <p class="err" id="b-err" hidden></p>
+    </form>
+  </section>
+
+  <section id="tab-info" class="tab" hidden>
+    <h2>How this works</h2>
+    <div class="prose">
+      <p>This is an unofficial fan tool. It is not made or endorsed by the game's publisher.</p>
+      <p><strong>Card data.</strong> <span id="info-data"></span> Cards released after that date are missing, and balance changes since then are not reflected.</p>
+      <p><strong>The win rate.</strong> Each deck is played through hundreds of simulated battles against six other strong decks built from the same cards. It tells you how decks compare with each other. It does not predict your real arena win rate, because real opponents use different cards.</p>
+      <p><strong>Offense and defense.</strong> On offense your deck moves first and is played carefully, the way a person would. On defense it moves second and is played the way the computer plays: it picks cards at random and only combines when it happens to be able to. Defense decks therefore favour cards that are strong without help.</p>
+      <p><strong>What the simulator assumes.</strong> The battle rules are rebuilt from the in-game skill descriptions and community notes, so treat results as a strong guide, not a guarantee.</p>
+      <ul>
+        <li>Five cards in hand, five slots in play, one card played per turn.</li>
+        <li>A card or combo waits one turn before it attacks.</li>
+        <li>Combo strength follows the community formula based on both cards' levels. Combo mastery is not included.</li>
+        <li>Hero levels are assumed to be maxed.</li>
+        <li>The attacker loses if the battle reaches 50 rounds.</li>
+      </ul>
+      <p>If a recommended deck plays badly in the real game, tell Claude what happened and the rules can be corrected.</p>
+    </div>
+  </section>
+</main>
+
+<nav aria-label="Sections">
+  <div>
+    <a href="#build" data-tab="build">Build</a>
+    <a href="#collection" data-tab="collection">Collection</a>
+    <a href="#combos" data-tab="combos">Combos</a>
+    <a href="#bge" data-tab="bge">Effects</a>
+    <a href="#info" data-tab="info">Info</a>
+  </div>
+</nav>
+
+<script id="app-js">__BUNDLE__</script>
