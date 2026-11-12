@@ -1,20 +1,20 @@
 // Deck recommendation: a fast rating narrows the field, then simulated battles
 // decide between the finalists.
-import { makeUnit, makeCombo, maxLevel } from './data.js';
+import { makeUnit, makeCombo, ownedLevels } from './data.js';
 import { battle, rng } from './engine.js';
 
 /**
  * The cards available to build from.
  * source 'all': every card at max level, `copies` of each.
- * source 'mine': collection = { cardId: { n: copies, l: level } }.
+ * source 'mine': collection = { cardId: { lv: { level: copies } } }.
  */
 export function buildPool(db, { source, collection, copies = 1 }) {
   const pool = [];
   if (source === 'mine') {
     for (const [id, own] of Object.entries(collection || {})) {
       const c = db.cards.get(Number(id));
-      if (!c || !own.n) continue;
-      pool.push({ t: makeUnit(db, c.i, own.l || maxLevel(c)), n: own.n });
+      if (!c) continue;
+      for (const [l, n] of Object.entries(ownedLevels(c, own))) if (n > 0) pool.push({ t: makeUnit(db, c.i, Number(l)), n });
     }
   } else {
     for (const c of db.cards.values()) pool.push({ t: makeUnit(db, c.i, 0), n: copies });

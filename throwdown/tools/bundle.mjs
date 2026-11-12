@@ -53,4 +53,9 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
 });
 `);
+// The account export script as one self-contained file people can download and run.
+await build({
+  entryPoints: [join(root, 'tools/export-account.mjs')], bundle: true, format: 'esm', platform: 'node',
+  target: 'node18', outfile: join(root, 'throwdown-export.mjs'), legalComments: 'none',
+});
 console.log(`dist/ built: page ${(page.length / 1024).toFixed(0)} KB, script ${(js.length / 1024).toFixed(0)} KB`);

@@ -62,10 +62,18 @@ test('battles are repeatable and a max-level deck beats a level-1 copy', () => {
 
 test('recommend returns a legal deck from a small collection', async () => {
   const collection = {};
-  for (const c of [...db.cards.values()].filter((c) => c.r >= 3).slice(0, 90)) collection[c.i] = { n: 1, l: 0 };
+  for (const c of [...db.cards.values()].filter((c) => c.r >= 3).slice(0, 90)) collection[c.i] = { lv: { [c.a.length]: 1 } };
   const pool = buildPool(db, { source: 'mine', collection });
   const res = await recommend(db, { pool, heroes: [hero()], mode: 'offense', size: 25, effort: 1 });
   assert.equal(res.cards.reduce((s, c) => s + c.n, 0), 25);
-  for (const c of res.cards) assert.ok(c.n <= collection[c.t.id].n);
+  for (const c of res.cards) assert.ok(c.n <= collection[c.t.id].lv[c.t.level]);
   assert.ok(res.winRate >= 0 && res.winRate <= 1);
+});
+
+test('copies of one card at different levels are separate pool entries', () => {
+  const c = [...db.cards.values()].find((x) => x.r === 4 && x.k === 'o');
+  const pool = buildPool(db, { source: 'mine', collection: { [c.i]: { lv: { 1: 2, [c.a.length]: 1 } }, 999999999: { lv: { 1: 1 } } } });
+  assert.deepEqual(pool.map((e) => [e.t.level, e.n]).sort(), [[1, 2], [c.a.length, 1]].sort());
+  const old = buildPool(db, { source: 'mine', collection: { [c.i]: { n: 3, l: 5 } } });
+  assert.deepEqual(old.map((e) => [e.t.level, e.n]), [[5, 3]]);
 });

@@ -1,6 +1,6 @@
 // Page behaviour: tabs, collection, combo finder, battleground effects, builds.
 import {
-  createDb, makeUnit, makeCombo, setBge, maxLevel, describeSkills, levelLabel,
+  createDb, makeUnit, makeCombo, setBge, maxLevel, describeSkills, levelLabel, ownedLevels, ownedTotal,
   SHOWS, RARITY, KIND, TRAITS, SKILLS, skillName, cap,
 } from './data.js';
 import { runBuild, slim } from './job.js';
@@ -19,7 +19,7 @@ const store = {
   collection: {}, bges: [EXAMPLE_BGE], saved: [],
   prefs: { source: 'all', mode: 'offense', bge: -1, heroId: 0, size: 25, copies: 1, effort: 2 },
 };
-const ui = { kind: '', shown: 40, combo: 0, draft: [], result: null, resultLabel: '', busy: false };
+const ui = { kind: '', shown: 40, combo: 0, draft: [], result: null, resultLabel: '', busy: false, sel: {}, custom: false };
 
 function load() {
   try {
@@ -50,7 +50,48 @@ function h(tag, attrs, ...kids) {
 }
 const fill = (el, ...kids) => { el.replaceChildren(...kids.flat().filter((k) => k != null && k !== false)); return el; };
 const option = (value, text, selected) => h('option', { value, text, selected: selected || null });
-const ownedCount = () => Object.values(store.collection).reduce((s, o) => s + (o.n || 0), 0);
+const owns = (c) => ownedTotal(c, store.collection[c.i]);
+const ownedCount = () => {
+  let n = 0;
+  for (const id in store.collection) { const c = db.cards.get(Number(id)); if (c) n += owns(c); }
+  return n;
+};
+const topLevel = (c) => Math.max(0, ...Object.entries(ownedLevels(c, store.collection[c.i])).filter((e) => e[1] > 0).map((e) => Number(e[0])));
+
+// Tidy a collection from storage, a backup or an export: known cards only,
+// sensible levels and counts, always in the { lv: { level: count } } shape.
+function cleanCollection(data) {
+  const next = {};
+  for (const [id, o] of Object.entries(data || {})) {
+    const c = db.cards.get(Number(id));
+    if (!c) continue;
+    const lv = {};
+    for (const [l, n] of Object.entries(ownedLevels(c, o))) {
+      const level = Math.max(1, Math.min(maxLevel(c), Math.floor(Number(l)) || maxLevel(c)));
+      const count = Math.min(99, Math.floor(Number(n)) || 0);
+      if (count > 0) lv[level] = Math.min(99, (lv[level] || 0) + count);
+    }
+    if (Object.keys(lv).length) next[id] = { lv };
+  }
+  return next;
+}
+
+// The card data from a game export is kept in the browser's database, since
+// it is too large for ordinary page storage.
+function idb(mode, fn) {
+  return new Promise((resolve, reject) => {
+    let open;
+    try { open = indexedDB.open('throwdown-deck-lab', 1); } catch (e) { reject(e); return; }
+    open.onupgradeneeded = () => open.result.createObjectStore('kv');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const tx = open.result.transaction('kv', mode);
+      const req = fn(tx.objectStore('kv'));
+      tx.oncomplete = () => resolve(req && req.result);
+      tx.onerror = () => reject(tx.error);
+    };
+  });
+}
 
 function traitsText(t) {
   const bits = [KIND[t.kind] || '', SHOWS[t.type] || ''];
@@ -246,7 +287,7 @@ function collectionMatches() {
     if (ui.kind && c.k !== ui.kind) continue;
     if (rarity && c.r !== rarity) continue;
     if (show && c.t !== show) continue;
-    if (owned && !(store.collection[c.i] && store.collection[c.i].n)) continue;
+    if (owned && !owns(c)) continue;
     if (q && !c.n.toLowerCase().includes(q) && !c.tr.some((t) => t.includes(q))) continue;
     out.push(c);
   }
@@ -254,21 +295,33 @@ function collectionMatches() {
 }
 
 function collectionRow(c) {
-  const own = store.collection[c.i] || { n: 0, l: maxLevel(c) };
-  const t = makeUnit(db, c.i, own.l);
-  const set = (n, l) => {
-    if (n <= 0) delete store.collection[c.i]; else store.collection[c.i] = { n, l };
+  const lv = { ...ownedLevels(c, store.collection[c.i]) };
+  const total = owns(c);
+  const held = Object.keys(lv).filter((l) => lv[l] > 0).map(Number).sort((a, b) => b - a);
+  const sel = ui.sel[c.i] || held[0] || maxLevel(c);
+  const t = makeUnit(db, c.i, sel);
+  const commit = () => {
+    for (const l in lv) if (!(lv[l] > 0)) delete lv[l];
+    if (Object.keys(lv).length) store.collection[c.i] = { lv }; else delete store.collection[c.i];
     save();
     row.replaceWith(collectionRow(c));
     $('c-summary').textContent = `${ownedCount()} cards owned`;
   };
+  const add = (d) => { lv[sel] = Math.max(0, Math.min(99, (lv[sel] || 0) + d)); ui.sel[c.i] = sel; commit(); };
+  const pickLevel = (to) => {
+    // With copies at a single level, changing the level re-levels them all.
+    if (held.length === 1 && to !== held[0]) { lv[to] = lv[held[0]]; delete lv[held[0]]; }
+    ui.sel[c.i] = to;
+    commit();
+  };
   const levels = [];
-  for (let l = maxLevel(c); l >= 1; l--) levels.push(option(l, levelLabel(c, l), l === own.l));
+  for (let l = maxLevel(c); l >= 1; l--) levels.push(option(l, levelLabel(c, l) + (lv[l] > 0 && held.length > 1 ? ` (${lv[l]} owned)` : ''), l === sel));
   const controls = h('span', { class: 'own' },
-    h('button', { class: 'btn', type: 'button', text: '−', 'aria-label': `Remove one ${c.n}`, disabled: !own.n, onclick: () => set(own.n - 1, own.l) }),
-    h('output', { text: String(own.n) }),
-    h('button', { class: 'btn', type: 'button', text: '+', 'aria-label': `Add one ${c.n}`, onclick: () => set(own.n + 1, own.l) }),
-    own.n ? h('select', { 'aria-label': `Level of ${c.n}`, onchange: (e) => set(own.n, Number(e.target.value)) }, levels) : null);
+    h('button', { class: 'btn', type: 'button', text: '−', 'aria-label': `Remove one ${c.n}`, disabled: !(lv[sel] > 0), onclick: () => add(-1) }),
+    h('output', { text: String(total) }),
+    h('button', { class: 'btn', type: 'button', text: '+', 'aria-label': `Add one ${c.n}`, onclick: () => add(1) }),
+    total ? h('select', { 'aria-label': `Level of ${c.n}`, onchange: (e) => pickLevel(Number(e.target.value)) }, levels) : null,
+    held.length > 1 ? h('span', { class: 'meta', text: `Owned: ${held.map((l) => `${lv[l]} at ${levelLabel(c, l)}`).join(', ')}. + and − change the level shown.` }) : null);
   const row = cardRow(t, { extra: controls });
   return row;
 }
@@ -305,32 +358,82 @@ function wireCollection() {
   });
   $('c-load').addEventListener('click', () => {
     try {
-      const data = JSON.parse($('c-io').value);
-      const next = {};
-      for (const [id, o] of Object.entries(data)) {
-        const c = db.cards.get(Number(id));
-        const n = Math.floor(Number(o && o.n));
-        if (!c || !(n > 0)) continue;
-        next[id] = { n: Math.min(n, 99), l: Math.max(1, Math.min(maxLevel(c), Math.floor(Number(o.l)) || maxLevel(c))) };
-      }
-      store.collection = next; save(); renderCollection();
+      const next = cleanCollection(JSON.parse($('c-io').value));
+      store.collection = next; ui.sel = {}; save(); renderCollection();
       msg(`Loaded ${Object.keys(next).length} different cards.`);
     } catch { msg('That text is not a collection backup. Paste the text exactly as it was copied.'); }
   });
   let armed = 0;
   $('c-clear').addEventListener('click', () => {
     if (Date.now() - armed < 4000) {
-      store.collection = {}; save(); renderCollection(); armed = 0;
+      store.collection = {}; ui.sel = {}; save(); renderCollection(); armed = 0;
       $('c-clear').textContent = 'Clear collection'; msg('Collection cleared.');
     } else { armed = Date.now(); $('c-clear').textContent = 'Tap again to clear'; }
+  });
+}
+
+// ---- game export ------------------------------------------------------------
+
+function useData(next, custom) {
+  raw = next; ui.custom = custom;
+  db = createDb(raw);
+  if (worker) { worker.terminate(); pending.clear(); }
+  worker = startWorker();
+  const newest = new Date(`${raw.meta.newestCard}T00:00:00Z`).toLocaleDateString(undefined, { year: 'numeric', month: 'short', timeZone: 'UTC' });
+  $('data-date').textContent = custom ? `My export ${raw.meta.exported || ''}` : `Cards to ${newest}`;
+  $('info-data').textContent = custom
+    ? `The app is using your game export from ${raw.meta.exported || 'an unknown date'}: ${db.cards.size.toLocaleString()} cards and ${db.heroes.size} heroes, newest from ${newest}.`
+    : `The app knows ${db.cards.size.toLocaleString()} cards and ${db.heroes.size} heroes, up to ${newest}.`;
+  $('c-search').placeholder = `Search ${db.cards.size.toLocaleString()} cards`;
+  $('g-status').textContent = custom
+    ? `Using your game export from ${raw.meta.exported || 'an unknown date'} (${db.cards.size.toLocaleString()} cards).`
+    : 'Using the built-in card data.';
+  $('g-reset').hidden = !custom;
+  if (!db.cards.has(ui.combo)) { const p = [...db.cards.values()].find((c) => c.k === 'c'); ui.combo = p ? p.i : 0; }
+  store.collection = cleanCollection(store.collection);
+  ui.sel = {};
+}
+
+function wireExport() {
+  const msg = (t, bad) => { $('g-msg').textContent = t; $('g-msg').className = bad ? 'err' : 'note'; };
+  $('g-file').addEventListener('change', async () => {
+    const file = $('g-file').files[0];
+    if (!file) return;
+    msg('Reading the file…');
+    try {
+      const x = JSON.parse(await file.text());
+      const d = x && x.data;
+      if (x.format !== 'deck-lab-export' || !d || !Array.isArray(d.cards) || !Array.isArray(d.heroes) || !d.combos || !Array.isArray(d.recipeSets) || !d.charSet || !d.meta) {
+        throw new Error('not an export');
+      }
+      let kept = true;
+      try { await idb('readwrite', (s) => s.put(d, 'data')); } catch { kept = false; }
+      useData(d, true);
+      store.collection = cleanCollection(x.collection);
+      save();
+      renderCollection(); syncBuildForm();
+      msg(`Loaded ${db.cards.size.toLocaleString()} cards and your collection of ${ownedCount()} cards.` +
+        (kept ? '' : ' This browser would not store the card data, so you will need to load the file again next time.'));
+    } catch {
+      msg('That file is not a Deck Lab export. Choose the deck-lab-export.json file the script created.', true);
+    }
+    $('g-file').value = '';
+  });
+  $('g-reset').addEventListener('click', async () => {
+    try { await idb('readwrite', (s) => s.delete('data')); } catch { /* nothing stored */ }
+    try {
+      const res = await fetch('data/cards.json');
+      useData(await res.json(), false);
+      save(); renderCollection(); syncBuildForm();
+      msg('Back on the built-in card data. Cards it does not know were removed from your collection.');
+    } catch { msg('The built-in card data could not be loaded. Check your connection.', true); }
   });
 }
 
 // ---- combo finder -----------------------------------------------------------
 
 function ownedUnit(c) {
-  const own = store.collection[c.i];
-  return makeUnit(db, c.i, own && own.n ? own.l : 0);
+  return makeUnit(db, c.i, topLevel(c));
 }
 
 function renderCombos() {
@@ -350,7 +453,7 @@ function renderCombos() {
   const groups = new Map();
   for (const c of db.cards.values()) {
     if (c.k === 'p' || c.k === card.k) continue;
-    if (onlyOwned && !(store.collection[c.i] && store.collection[c.i].n)) continue;
+    if (onlyOwned && !owns(c)) continue;
     const other = ownedUnit(c);
     const x = makeCombo(db, me, other);
     if (!x) continue;
@@ -443,25 +546,24 @@ function wireBges() {
 
 export async function start() {
   load();
-  try {
-    const res = await fetch('data/cards.json');
-    if (!res.ok) throw new Error(String(res.status));
-    raw = await res.json();
-  } catch {
-    $('boot').textContent = 'The card data could not be loaded. Check your connection and reload the page.';
-    $('boot').className = 'err';
-    return;
+  let data = null, custom = false;
+  try { data = await idb('readonly', (s) => s.get('data')); custom = !!data; } catch { /* no stored export */ }
+  if (!data) {
+    try {
+      const res = await fetch('data/cards.json');
+      if (!res.ok) throw new Error(String(res.status));
+      data = await res.json();
+    } catch {
+      $('boot').textContent = 'The card data could not be loaded. Check your connection and reload the page.';
+      $('boot').className = 'err';
+      return;
+    }
   }
-  db = createDb(raw);
-  worker = startWorker();
+  const peterFirst = (d) => { const p = d.cards.find((c) => c.n === 'Peter' && c.k === 'c'); return p ? p.i : 0; };
+  ui.combo = peterFirst(data);
+  useData(data, custom);
   $('boot').hidden = true;
-  const newest = new Date(`${raw.meta.newestCard}T00:00:00Z`).toLocaleDateString(undefined, { year: 'numeric', month: 'short', timeZone: 'UTC' });
-  $('data-date').textContent = `Cards to ${newest}`;
-  $('info-data').textContent = `The app knows ${db.cards.size.toLocaleString()} cards and ${db.heroes.size} heroes, up to ${newest}.`;
-  $('c-search').placeholder = `Search ${db.cards.size.toLocaleString()} cards`;
-  const peter = [...db.cards.values()].find((c) => c.n === 'Peter' && c.k === 'c');
-  ui.combo = peter ? peter.i : 0;
-  wireCollection(); wireBges();
+  wireCollection(); wireBges(); wireExport();
   $('build-form').addEventListener('submit', onBuild);
   $('build-form').addEventListener('change', (e) => { if (e.target.closest('#progress') == null) readBuildForm(); });
   $('x-search').addEventListener('input', renderCombos);

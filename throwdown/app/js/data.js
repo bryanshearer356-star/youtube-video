@@ -60,6 +60,17 @@ export function setBge(db, bge) {
 
 export const maxLevel = (card) => card.a.length;
 
+/**
+ * Copies owned of one card as { level: count }. Collection entries are
+ * { lv: { level: count } }; the older { n, l } shape is still understood.
+ */
+export function ownedLevels(card, own) {
+  if (!own) return {};
+  if (own.lv) return own.lv;
+  return own.n > 0 ? { [own.l || maxLevel(card)]: own.n } : {};
+}
+export const ownedTotal = (card, own) => Object.values(ownedLevels(card, own)).reduce((s, n) => s + n, 0);
+
 function skillsAt(card, lvl) {
   for (let i = lvl - 1; i >= 0; i--) if (card.s[i]) return card.s[i];
   return [];
@@ -162,7 +173,7 @@ export function makeCombo(db, a, b) {
   let ch = a, it = b;
   if (a.kind === 'o' && b.kind === 'c') { ch = b; it = a; }
   else if (!(a.kind === 'c' && b.kind === 'o')) return null;
-  const key = ((ch.id * 32 + ch.level) * 4194304) + (it.id * 32 + it.level);
+  const key = ((ch.id * 32 + ch.level) * 134217728) + (it.id * 32 + it.level);
   const hit = db.comboCache.get(key);
   if (hit !== undefined) return hit;
   let res = null;

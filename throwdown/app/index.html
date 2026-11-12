@@ -62,6 +62,7 @@ h3 { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: u
 legend { margin-bottom: 6px; }
 select, input[type=search], input[type=text], input[type=number], textarea {
   width: 100%; min-height: 44px; padding: 8px 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+input[type=file] { width: 100%; min-height: 44px; padding: 8px 0; }
 textarea { min-height: 96px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
 .row > * { flex: 1 1 130px; min-width: 0; }
@@ -197,6 +198,16 @@ nav a[aria-current=page] { color: var(--ink); border-top-color: var(--accent); }
     <label class="check"><input type="checkbox" id="c-owned"> Show only cards I own</label>
     <div class="panel"><div class="cards" id="c-list"></div></div>
     <button type="button" class="btn" id="c-more" hidden>Show more</button>
+    <details class="panel" id="g-panel">
+      <summary>Load my game export</summary>
+      <div class="field">
+        <p class="note">Run the export script on a computer, then choose the <code>deck-lab-export.json</code> file it creates. This replaces the card data with the game's current cards and replaces your collection with what your account owns.</p>
+        <input type="file" id="g-file" accept=".json,application/json" aria-label="Game export file">
+        <p class="note" id="g-status"></p>
+        <p class="note" id="g-msg" role="status"></p>
+        <button type="button" class="btn" id="g-reset" hidden>Go back to the built-in card data</button>
+      </div>
+    </details>
     <details class="panel">
       <summary>Back up or move my collection</summary>
       <div class="field">
@@ -262,7 +273,7 @@ nav a[aria-current=page] { color: var(--ink); border-top-color: var(--accent); }
         <li>Five cards in hand, five slots in play, one card played per turn.</li>
         <li>A card or combo waits one turn before it attacks.</li>
         <li>Combo strength follows the community formula based on both cards' levels. Combo mastery is not included.</li>
-        <li>Hero levels are assumed to be maxed.</li>
+        <li>Hero levels are assumed to be maxed, and every hero is assumed to be available.</li>
         <li>The attacker loses if the battle reaches 50 rounds.</li>
       </ul>
       <p>If a recommended deck plays badly in the real game, tell Claude what happened and the rules can be corrected.</p>
