@@ -8,3 +8,4 @@ episodes/example/build/
 episodes/example/out/
 !episodes/**/.gitkeep
 .DS_Store
+cheer-idle/dist/

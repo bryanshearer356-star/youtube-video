@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hit Zero</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!-- app:start -->
+<header class="topbar">
+  <div class="gutter topbar__inner">
+    <div class="brand">
+      <span class="brand__name">Hit Zero</span>
+      <span class="brand__tag">Cheer idle</span>
+    </div>
+    <div class="bank" aria-live="off">
+      <div class="bank__main"><span class="bank__value" id="spirit">0</span><span class="bank__unit">Spirit</span></div>
+      <div class="bank__rate"><span id="rate">0</span> per second</div>
+    </div>
+    <div class="trophies" title="Trophies won. Each one adds 25% to all Spirit.">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.4A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.4 12H8a4 4 0 0 1-4-4V5h3V3Zm0 4H6v1a2 2 0 0 0 1 1.7V7Zm10 0v2.7A2 2 0 0 0 18 8V7h-1Z"/></svg>
+      <span id="trophies">0</span>
+      <span class="visually-hidden">trophies</span>
+    </div>
+  </div>
+</header>
+
+<main class="gutter page">
+  <nav aria-label="Divisions">
+    <ol class="ladder" id="ladder"></ol>
+  </nav>
+
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button class="tabs__tab" role="tab" type="button" id="tab-practice" data-tab="practice" aria-selected="true">Practice</button>
+    <button class="tabs__tab" role="tab" type="button" id="tab-skills" data-tab="skills" aria-selected="false">Scoresheet</button>
+    <button class="tabs__tab" role="tab" type="button" id="tab-program" data-tab="program" aria-selected="false">Program</button>
+  </div>
+
+  <div class="board" id="board" data-tab="practice">
+    <section class="col col--practice" data-panel="practice" aria-labelledby="practice-title">
+      <div class="mat">
+        <h2 class="mat__title" id="practice-title">Practice floor</h2>
+        <button class="drill" id="drill" type="button">
+          <span class="drill__word">Drill</span>
+          <span class="drill__gain">+<span id="drill-power">1</span></span>
+        </button>
+        <p class="mat__hint">Run a drill to earn Spirit. Program upgrades earn it while you're away.</p>
+        <div class="mat__floaters" id="floaters" aria-hidden="true"></div>
+      </div>
+
+      <div class="comp" id="comp">
+        <div class="comp__head">
+          <span class="eyebrow" id="comp-kind">Next competition</span>
+          <h2 class="comp__name" id="comp-name"></h2>
+        </div>
+        <div class="comp__body" id="comp-body">
+          <div class="scorebar" id="scorebar" role="img">
+            <div class="scorebar__fill" id="scorebar-fill"></div>
+            <div class="scorebar__target" id="scorebar-target"></div>
+          </div>
+          <div class="comp__numbers">
+            <div><span class="comp__num" id="comp-score">0.0</span><span class="comp__cap">Your routine</span></div>
+            <div class="comp__numbers-right"><span class="comp__num" id="comp-target">0</span><span class="comp__cap">Score to win</span></div>
+          </div>
+          <p class="comp__status" id="comp-status"></p>
+          <button class="btn btn--big" id="compete" type="button">Compete</button>
+        </div>
+        <ol class="comp__season" id="comp-season"></ol>
+      </div>
+    </section>
+
+    <section class="col col--skills" data-panel="skills" aria-labelledby="sheet-title">
+      <div class="sheet">
+        <header class="sheet__head">
+          <div>
+            <span class="eyebrow" id="sheet-division"></span>
+            <h2 class="sheet__title" id="sheet-title">Scoresheet</h2>
+          </div>
+          <div class="sheet__total">
+            <span class="sheet__score" id="sheet-score">0.0</span>
+            <span class="sheet__outof">out of 100</span>
+          </div>
+        </header>
+        <p class="sheet__blurb" id="sheet-blurb"></p>
+        <ul class="skills" id="skills"></ul>
+        <p class="sheet__foot">Judges score all six categories, so one great skill won't carry a routine. Every skill level also adds 1% to all Spirit.</p>
+      </div>
+      <details class="past" id="past" hidden>
+        <summary>Earlier divisions</summary>
+        <div id="past-list"></div>
+      </details>
+    </section>
+
+    <section class="col col--program" data-panel="program" aria-labelledby="program-title">
+      <h2 class="section-title" id="program-title">Program</h2>
+      <p class="section-note">Each one earns Spirit every second, even when the game is closed.</p>
+      <ul class="gens" id="gens"></ul>
+
+      <h2 class="section-title section-title--gap">Gear</h2>
+      <p class="section-note">Bought once. Lasts for good.</p>
+      <ul class="boosts" id="boosts"></ul>
+      <p class="owned" id="owned" hidden></p>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <span id="save-status">Progress saves in this browser.</span>
+    <button class="linkbtn" id="reset" type="button">Start over</button>
+  </footer>
+</main>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+<!-- app:end -->
+<script src="js/data.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
